@@ -891,24 +891,39 @@ def main():
         font-weight: bold;
     }
 
-    /* 按钮样式 */
-    div[data-testid="stButton"] button, 
-    div[data-testid="stDownloadButton"] button[kind="secondary"] {
-        width: 100%;
-        background-color: white;
-        color: #333333;
-        border: 1px solid #cccccc;
-        border-radius: 5px;
-        padding: 0.5rem 1rem;
-        font-size: 1rem;
+    /* 针对下载按钮 - 使用 data-testid 直接命中 */
+    button[data-testid="stBaseButton-secondary"] {
+        width: 100% !important;
+        background-color: white !important;
+        color: #333333 !important;
+        border: 1px solid #cccccc !important;
+        border-radius: 5px !important;
+        padding: 0.5rem 1rem !important;
+        font-size: 1rem !important;
     }
     
-    /* 鼠标悬停效果 */
-    div[data-testid="stButton"] button:hover, 
-    div[data-testid="stDownloadButton"] button:hover {
-        background-color: #f0f0f0;
-        border-color: #999999;
-        color: #000000;
+    /* 悬停效果 */
+    button[data-testid="stBaseButton-secondary"]:hover {
+        background-color: #f0f0f0 !important;
+        border-color: #999999 !important;
+        color: #000000 !important;
+    }
+    
+    /* 同时处理普通按钮（如果有） */
+    button[data-testid="stBaseButton-primary"] {
+        width: 100% !important;
+        background-color: white !important;
+        color: #333333 !important;
+        border: 1px solid #cccccc !important;
+        border-radius: 5px !important;
+        padding: 0.5rem 1rem !important;
+        font-size: 1rem !important;
+    }
+    
+    button[data-testid="stBaseButton-primary"]:hover {
+        background-color: #f0f0f0 !important;
+        border-color: #999999 !important;
+        color: #000000 !important;
     }
 
     /* 输入框样式 */
