@@ -892,21 +892,23 @@ def main():
     }
 
     /* 按钮样式 */
-    .stButton button, .stDownloadButton button {
-    width: 100%;
-    background-color: white;      /* 白色背景 */
-    color: #333333;               /* 深灰色文字，避免白色背景看不清 */
-    border: 1px solid #cccccc;    /* 添加浅灰色边框，让按钮边界可见 */
-    border-radius: 5px;
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
+    div[data-testid="stButton"] button, 
+    div[data-testid="stDownloadButton"] button {
+        width: 100%;
+        background-color: white;
+        color: #333333;
+        border: 1px solid #cccccc;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
     }
-
-    /* 鼠标悬停时的效果 */
-    .stButton button:hover, .stDownloadButton button:hover {
-        background-color: #f0f0f0;    /* 浅灰色背景 */
-        border-color: #999999;         /* 边框变深 */
-        color: #000000;                /* 文字变黑 */
+    
+    /* 鼠标悬停效果 */
+    div[data-testid="stButton"] button:hover, 
+    div[data-testid="stDownloadButton"] button:hover {
+        background-color: #f0f0f0;
+        border-color: #999999;
+        color: #000000;
     }
 
     /* 输入框样式 */
