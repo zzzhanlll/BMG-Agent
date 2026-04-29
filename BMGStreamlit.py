@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
+from io import BytesIO
 
 # ========== 辅助函数 ==========
 def sanitize_markdown(content):
@@ -316,7 +317,7 @@ def process_user_input(user_input: str, conversation_id: str, history_manager: H
                                 param = {"data": data,
                                          "conversation_id": st.session_state.loaded_conversation_id,
                                          "idx": idx}
-                                st.session_state.cleaning_dialog_params = {keep_idx: param}
+                                st.session_state.cleaning_dialog_params[keep_idx] = param
 
                                 st.rerun()
                             else:
@@ -335,7 +336,7 @@ def process_user_input(user_input: str, conversation_id: str, history_manager: H
                         param = {"data": chunk,
                                  "conversation_id": st.session_state.loaded_conversation_id,
                                  "idx": idx}
-                        st.session_state.cleaning_dialog_params = {keep_idx: param}
+                        st.session_state.cleaning_dialog_params[keep_idx] = param
 
                         st.rerun()
 
@@ -403,64 +404,169 @@ def get_history_manager():
 def show_user_manual_popup():
     """显示用户手册"""
     st.markdown("""
-    <style>
-    .stDialog > div {
-        width: 95vw !important;
-        max-width: 1200px !important;
-    }
-    </style>
+        <style>
+            /* 关键：使用 data-testid="stDialog" 来选择对话框的外层容器 */
+            div[data-testid="stDialog"] div[role="dialog"] {
+                width: 90vw !important;     /* 宽度占视口的90% */
+                max-width: 920px !important; /* 最大宽度1200px，符合你的要求 */
+                height: 90vh !important;    /* 高度占视口的90% */
+                max-height: 900px !important; /* 最大高度900px */
+            }
+
+            /* 让对话框的内容区域可以滚动，避免内容溢出 */
+            div[data-testid="stDialog"] div[role="dialog"] > div:first-child {
+                max-height: calc(90vh - 70px) !important; /* 减去标题栏的高度 */
+                overflow-y: auto !important;
+            }
+        </style>
     """, unsafe_allow_html=True)
 
     manual_content = """
-    # BMG Agent 用户手册
+# BMG Agent 用户手册
 
-    ## 简介
-    BMG Agent是一个交互式生物质气化问答聊天机器人，基于Neo4j数据库和大型语言模型构建。
+## 简介
+BMG Agent 是一个基于 Neo4j 图数据库与大语言模型（LLM）构建的 **生物质气化实验数据智能问答系统**。您可以用自然语言提问，系统会自动分析意图、生成 Cypher 查询、检索数据并给出分析总结。
 
-    ## 功能特性
+---
 
-    ### 1. 智能问答
-    - 支持自然语言查询生物质气化实验数据
-    - 自动生成Cypher查询语句
-    - 提供数据分析和总结
+## 功能特性
 
-    ### 2. 数据可视化
-    - 支持图形化展示数据关系
-    - 显示查询路径结构
+### 1. 智能问答
+- 支持 **自然语言** 查询生物质气化实验数据
+- 自动生成 **Cypher 查询语句**，无需手动编写
+- 查询后自动生成 **数据摘要与分析**（如温度范围、产气分布等）
 
-    ### 3. 历史记录
-    - 自动保存对话历史
-    - 支持历史对话查看和恢复
+### 2. 数据清洗与分析
+- 按 **属性组** 灵活选择分析维度：C/H/O（元素组成）、ash/fc/volatile（工业分析）、H₂/CO/CO₂/CH₄（产物气体）
+- 操作参数（ER、T、Agent_biomass_ratio）**自动 min-max 归一化**至 0-1 范围
+- 比例归一化：同组属性自动归一化为百分比
+- 自动删除含空值的行，确保数据质量
 
-    ### 4. 预定义问题
-    - 提供常见问题示例
-    - 快速开始查询
+### 3. 数据可视化
+- **小提琴图**：展示清洗后各属性的数值分布
+- **相关系数热图**：揭示属性之间的线性相关性
+- 图表支持 **在线预览、本地保存（PNG）和下载**
 
-    ## 使用指南
+### 4. 数据导出
+- 查询结果可 **保存为 Excel 文件**（.xlsx）
+- 清洗后的数据同样支持 **保存与下载**
+- 当结果达到 LIMIT 20 上限时，支持 **一键搜索并保存全部数据**
 
-    ### 基本查询
-    1. 在底部输入框中输入您的问题
-    2. 系统将自动分析问题并生成Cypher查询
-    3. 查看查询结果和总结分析
+### 5. 对话历史管理
+- **自动保存** 每次对话记录
+- 左侧面板 **浏览全部历史对话**
+- 支持 **加载**（恢复对话）、**预览** 和 **删除** 对话
+- 点击「🆕 新建对话」可随时开启新会话
 
-    ### 示例问题
-    - "帮我找到含有生物质'beech'的实验数据"
-    - "温度在600-800°C之间的实验有哪些？"
-    - "哪种生物质产生的氢气最多？"
+### 6. 预定义问题
+- 右侧「💡 快速开始」中提供 **常用查询示例**，点击即可直接提问
 
-    ## 数据说明
-    数据库包含以下节点类型：
-    - **Id**: 文章ID和数据条目索引
-    - **Basic_properties**: 生物质基本属性
-    - **Reactor**: 反应器条件
-    - **Production_properties**: 气化产物
-    - **Metadata**: 文章元数据
+---
 
-    ## 注意事项
-    - 确保网络连接正常
-    - 查询结果最多返回20条记录
-    - 如果记录超过20条，可以保存所有数据
-    - 复杂的查询可能需要较长时间
+## 界面布局
+
+| 区域 | 位置 | 功能 |
+|------|------|------|
+| 对话历史 | 左侧栏 | 浏览、加载、预览、删除历史对话 |
+| 主聊天区 | 中央 | 显示问答消息、推理过程、Cypher 查询、数据表格 |
+| 信息面板 | 右侧栏 | 数据库状态、查询示例、使用统计 |
+
+---
+
+## 使用指南
+
+### 初次使用（配置）
+1. 点击右上角 **⚙️ 设置** 按钮
+2. 填写以下信息：
+   - **API Key**：您的 OpenRouter API 密钥
+   - **Base URL**：默认为 `https://openrouter.ai/api/v1`
+   - **Model Name**：默认为 `deepseek/deepseek-v3.2`
+   - **File Path**：数据保存路径（默认为当前目录）
+3. 点击 **保存**，系统将自动初始化 Agent
+
+### 基本查询流程
+1. 在底部输入框输入问题（如"帮我找到含有生物质 beech 的实验数据"）
+2. 系统展示 **推理过程**（可折叠展开）和 **Cypher 查询语句**
+3. 查询结果以 **表格** 形式展示
+4. 系统自动生成 **文字分析总结**
+
+### 数据清洗与分析流程
+1. 查询结果表格下方点击 **「搜索并保存所有数据」** 或 **「保存数据」**
+2. 保存后出现 **「数据清洗和分析」** 按钮，点击进入清洗对话框
+3. 按需勾选分析列组（C/H/O、ash/fc/volatile、H₂/CO/CO₂/CH₄ 及操作参数）
+4. 点击 **「开始清洗和分析」** 执行清洗
+5. 清洗完成后可：
+   - 查看 **小提琴图** 和 **热图**（点击「查看可视化图表」）
+   - **保存清洗后数据**（.xlsx）
+   - **下载图表**（PNG 格式）
+
+---
+
+## 数据说明
+
+### 节点类型
+| 节点 | 说明 |
+|------|------|
+| `Id` | 文章 ID（paper_id）与数据条目索引 |
+| `Basic_properties` | 生物质基本属性（元素分析、工业分析、热值等） |
+| `Reactor` | 反应器条件（温度、压力、ER、气化剂类型等） |
+| `Production_properties` | 气化产物组成（H₂、CO、CO₂、CH₄） |
+| `Metadata` | 文章元数据（作者、期刊、年份、引用次数等） |
+
+### 关键属性速查
+| 节点 | 属性 | 说明 |
+|------|------|------|
+| **Basic_properties** | `name` | 生物质名称 |
+| | `basis` | 测试基准（as-received、dry、dry-ash-free） |
+| | `C、H、O、N、S` | 元素分析（碳、氢、氧、氮、硫含量） |
+| | `ash、fc、volatile、moisture` | 工业分析（灰分、固定碳、挥发分、水分） |
+| | `HHV、LHV` | 高位、低位热值 |
+| **Reactor** | `T` | 气化温度（开尔文 K） |
+| | `P` | 气化压力（0.1 MPa 表示常压） |
+| | `ER` | 当量比（氧当量比） |
+| | `agent_type` | 气化剂类型（Steam、CO₂、Air、O₂ 或其混合） |
+| | `reactor_type` | 反应器类型（含模拟模型与工业设备） |
+| | `Agent_biomass_ratio` | 气化剂与生物质配比 |
+| | `catalyst` | 催化剂 |
+| | `particle_size` | 生物质粒径 |
+| | `bed_material_with_size` | 床料及尺寸 |
+| | `other_conditions` | 其他影响产气组成的补充条件 |
+| **Production_properties** | `H2` | 氢气含量 |
+| | `CO` | 一氧化碳含量 |
+| | `CO2` | 二氧化碳含量 |
+| | `CH4` | 甲烷含量 |
+| **Metadata** | `Title` | 文章标题 |
+| | `First_Author、All_Authors` | 第一作者、全部作者 |
+| | `Journal` | 期刊名称 |
+| | `Year、Volume、Issue、Pages` | 年份、卷、期、页码 |
+| | `DOI` | 数字对象标识符 |
+| | `Citations` | 引用次数 |
+| | `Author_Count` | 作者总数 |
+| | `Keywords` | 关键词 |
+
+---
+
+## 示例问题
+
+| 类型 | 示例 |
+|------|------|
+| 按生物质名称查询 | 「帮我找到含有生物质 beech 的实验数据」 |
+| 条件过滤 | 「温度在 600-800°C 之间的实验有哪些？」 |
+| 排序与最值 | 「帮我找到 ER 最大的实验数据」 |
+| 非空验证 | 「ash、volatile、fc、C、H、O 六个属性均非空的实验数据」 |
+| 分组分析 | 「农业残留物在不同温度下的气化产物分布」 |
+| 气化剂查询 | 「哪些实验使用了 Steam-Air 作为气化剂？」 |
+
+---
+
+## 注意事项
+
+- 确保 API Key 有效且网络连接正常
+- 单次查询默认返回 **最多 20 条** 记录（由 `LIMIT 20` 控制）
+- 如需完整数据，请点击「搜索并保存所有数据」
+- 数据清洗会 **删除任一选中列存在空值的整行**
+- 复杂查询可能需要较长时间，请耐心等待
+- 切换或新建对话后，原对话的历史记录会自动保留
     """
 
     with st.container(height=700):
@@ -543,6 +649,26 @@ def show_visualization_dialog(cleaned_data, excel_path=None, conversation_id=Non
     """
     显示数据可视化图表对话框
     """
+
+    st.markdown("""
+    <style>
+    /* 白色按钮样式 */
+    .stButton button, .stDownloadButton button {
+        width: 100%;
+        background-color: white;
+        color: #333333;
+        border: 1px solid #cccccc;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+    }
+    .stButton button:hover, .stDownloadButton button:hover {
+        background-color: #f0f0f0;
+        border-color: #999999;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     if cleaned_data.empty:
         st.error("没有可显示的数据")
         return
@@ -555,21 +681,50 @@ def show_visualization_dialog(cleaned_data, excel_path=None, conversation_id=Non
         st.markdown("### 小提琴图")
         st.pyplot(fig1)
 
+        col1, col2 = st.columns(2)
+        with col1:
+            if excel_path and conversation_id and idx is not None:
+                if st.button("保存小提琴图", type="secondary"):
+                    fig1.savefig(f"{excel_path}/{conversation_id}_{idx}_violin.png",
+                                 dpi=300, bbox_inches='tight')
+                    st.success(f"小提琴图已保存: {excel_path}/{conversation_id}_{idx}_violin.png")
+
+        buf1 = BytesIO()
+        fig1.savefig(buf1, format='png', dpi=300, bbox_inches='tight')
+        buf1.seek(0)  # 将指针移到开头
+
+        with col2:
+            # 提供下载按钮
+            st.download_button(
+                label="📥 下载小提琴图",
+                data=buf1,
+                file_name=f"{conversation_id}_{idx}_violin.png",
+                mime="image/png"
+            )
+
     if fig2:
         st.markdown("### 相关系数热图")
         st.pyplot(fig2)
 
-    # 如果提供了保存路径，提供保存图像选项
-    if excel_path and conversation_id and idx is not None:
-        if st.button("保存可视化图像", type="secondary"):
-            if fig1:
-                fig1.savefig(f"{excel_path}/{conversation_id}_{idx}_violin.png",
-                             dpi=300, bbox_inches='tight')
-                st.success(f"小提琴图已保存: {excel_path}/{conversation_id}_{idx}_violin.png")
-            if fig2:
-                fig2.savefig(f"{excel_path}/{conversation_id}_{idx}_heatmap.png",
-                             dpi=300, bbox_inches='tight')
-                st.success(f"热图已保存: {excel_path}/{conversation_id}_{idx}_heatmap.png")
+        col1, col2 = st.columns(2)
+        with col1:
+            if excel_path and conversation_id and idx is not None:
+                if st.button("保存热图", type="secondary"):
+                    fig2.savefig(f"{excel_path}/{conversation_id}_{idx}_heatmap.png",
+                                 dpi=300, bbox_inches='tight')
+                    st.success(f"热图已保存: {excel_path}/{conversation_id}_{idx}_heatmap.png")
+
+        buf2 = BytesIO()
+        fig2.savefig(buf2, format='png', dpi=300, bbox_inches='tight')
+        buf2.seek(0)
+
+        with col2:
+            st.download_button(
+                label="📥 下载热图",
+                data=buf2,
+                file_name=f"{conversation_id}_{idx}_heatmap.png",
+                mime="image/png"
+            )
 
 @st.dialog("数据清洗和分析")
 def show_data_cleaning_dialog(raw_data, conversation_id, idx):
@@ -677,7 +832,7 @@ def show_data_cleaning_dialog(raw_data, conversation_id, idx):
                      "conversation_id": conversation_id,
                      "idx": idx}
 
-            st.session_state.viz_cleaned_data_params = {f"{st.session_state.loaded_conversation_id}_{idx}": param}
+            st.session_state.viz_cleaned_data_params[f"{st.session_state.loaded_conversation_id}_{idx}"] = param
 
             st.info("点击返回可以进行查看可视化图表和保存清洗后数据")
 
@@ -737,15 +892,21 @@ def main():
     }
 
     /* 按钮样式 */
-    .stButton > button {
-        width: 100%;
-        border-radius: 8px;
-        transition: all 0.3s;
+    .stButton button, .stDownloadButton button {
+    width: 100%;
+    background-color: white;      /* 白色背景 */
+    color: #333333;               /* 深灰色文字，避免白色背景看不清 */
+    border: 1px solid #cccccc;    /* 添加浅灰色边框，让按钮边界可见 */
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
     }
 
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    /* 鼠标悬停时的效果 */
+    .stButton button:hover, .stDownloadButton button:hover {
+        background-color: #f0f0f0;    /* 浅灰色背景 */
+        border-color: #999999;         /* 边框变深 */
+        color: #000000;                /* 文字变黑 */
     }
 
     /* 输入框样式 */
@@ -879,7 +1040,7 @@ def main():
         st.session_state.show_cleaning_dialog = False
 
     if "cleaning_dialog_params" not in st.session_state:
-        st.session_state.cleaning_dialog_params = None
+        st.session_state.cleaning_dialog_params = {}
 
     if "dialog_triggered" not in st.session_state:
         st.session_state.dialog_triggered = None
@@ -888,7 +1049,7 @@ def main():
         st.session_state.cleaning_or_viz = None
 
     if "viz_cleaned_data_params" not in st.session_state:
-        st.session_state.viz_cleaned_data_params = None
+        st.session_state.viz_cleaned_data_params = {}
 
     # ========== 页面标题和按钮 ==========
     col1, col2, col3, col4 = st.columns([6, 1, 1, 1])
@@ -902,7 +1063,7 @@ def main():
             handle_new_conversation()  # 使用新的处理函数
 
     with col3:
-        if st.button("📖 手册", help="查看用户手册", use_container_width=True):
+        if st.button("📖 用户手册", help="查看用户手册", use_container_width=True):
             show_user_manual_popup()
 
     with col4:
@@ -999,7 +1160,7 @@ def main():
         st.markdown("---")
 
         # 预定义问题
-        with st.expander("### 💡 快速开始"):
+        with st.expander("💡 快速开始"):
 
             predefined_questions = [
                 "帮我找到含有生物质'beech'的实验数据",
@@ -1087,7 +1248,7 @@ def main():
                                         param = {"data": data,
                                                  "conversation_id": st.session_state.loaded_conversation_id,
                                                  "idx": max_idx}
-                                        st.session_state.cleaning_dialog_params = {keep_idx: param}
+                                        st.session_state.cleaning_dialog_params[keep_idx] = param
 
                                         st.rerun()
                                     else:
@@ -1105,22 +1266,39 @@ def main():
                                 param = {"data": convert_data,
                                          "conversation_id": st.session_state.loaded_conversation_id,
                                          "idx": max_idx}
-                                st.session_state.cleaning_dialog_params = {keep_idx: param}
-
+                                st.session_state.cleaning_dialog_params[keep_idx] = param
                                 st.rerun()
 
                         if st.session_state.cleaning_dialog_params is not None and keep_idx in st.session_state.cleaning_dialog_params:
                             st.success(f"数据已保存：{excel_path}/{keep_idx}.xlsx")
-                            if st.button("数据清洗和分析", key=f"clean_data_{max_idx}", use_container_width=True):
-                                st.session_state.show_cleaning_dialog = True
-                                st.session_state.dialog_triggered = keep_idx
-                                st.session_state.cleaning_or_viz = "cleaning"
-                                st.rerun()
+
+                            main_right_side, main_left_side = st.columns(2)
+                            with main_right_side:
+                                if st.button("数据清洗和分析", key=f"clean_data_{max_idx}", use_container_width=True):
+                                    st.session_state.show_cleaning_dialog = True
+                                    st.session_state.dialog_triggered = keep_idx
+                                    st.session_state.cleaning_or_viz = "cleaning"
+                                    st.rerun()
+
+                            with main_left_side:
+                                output = BytesIO()
+                                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                    st.session_state.cleaning_dialog_params[keep_idx]["data"].to_excel(writer, index=False)
+                                excel_data = output.getvalue()
+
+                                # 提供下载按钮
+                                st.download_button(
+                                    label="📥 下载所有数据",
+                                    data=excel_data,
+                                    file_name=f"{keep_idx}.xlsx",
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                )
+
 
                         if st.session_state.viz_cleaned_data_params is not None and keep_idx in st.session_state.viz_cleaned_data_params:
-                            col1, col2 = st.columns(2)
+                            col1, col2, col3 = st.columns(3)
                             with col1:
-                                if st.button("查看可视化图表", type="primary", use_container_width=True):
+                                if st.button("查看可视化图表", key=f"viz_{max_idx}", type="primary", use_container_width=True):
                                     st.session_state.show_cleaning_dialog = True
                                     st.session_state.dialog_triggered = keep_idx
                                     st.session_state.cleaning_or_viz = "viz"
@@ -1128,10 +1306,24 @@ def main():
 
                             with col2:
                                 # 保存数据按钮
-                                if st.button("保存清洗后数据", type="secondary", use_container_width=True):
+                                if st.button("保存清洗后的数据", key=f"keep_cleaned_{max_idx}", type="secondary", use_container_width=True):
                                     save_path = f"{excel_path}/{keep_idx}_cleaned.xlsx"
                                     st.session_state.viz_cleaned_data_params[keep_idx]["data"].to_excel(save_path, index=False)
                                     st.success(f"清洗数据已保存: {save_path}")
+
+                            with col3:
+                                output = BytesIO()
+                                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                    st.session_state.viz_cleaned_data_params[keep_idx]["data"].to_excel(writer, index=False)
+                                excel_data = output.getvalue()
+
+                                # 提供下载按钮
+                                st.download_button(
+                                    label="📥 下载清洗后的数据",
+                                    data=excel_data,
+                                    file_name=f"{keep_idx}_cleaned.xlsx",
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                )
                 else:
                     st.error("历史记录出现非对话内容")
 
