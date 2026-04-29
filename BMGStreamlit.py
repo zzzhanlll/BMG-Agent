@@ -893,7 +893,7 @@ def main():
 
     /* 按钮样式 */
     div[data-testid="stButton"] button, 
-    div[data-testid="stDownloadButton"] button {
+    div[data-testid="stDownloadButton"] button[kind="secondary"] {
         width: 100%;
         background-color: white;
         color: #333333;
